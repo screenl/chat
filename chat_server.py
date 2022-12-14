@@ -4,6 +4,8 @@ Created on Tue Jul 22 00:47:05 2014
 @author: alina, zzhang
 """
 
+
+
 import time
 import socket
 import select
@@ -14,6 +16,7 @@ import json
 import pickle as pkl
 from chat_utils import *
 import chat_group as grp
+import sqlutils
 
 
 class Server:
@@ -43,37 +46,59 @@ class Server:
         self.new_clients.append(sock)
         self.all_sockets.append(sock)
 
+
     def login(self, sock):
         # read the msg that should have login code plus username
         try:
             msg = json.loads(myrecv(sock))
             print("login:", msg)
             if len(msg) > 0:
-
                 if msg["action"] == "login":
                     name = msg["name"]
-
+                    passwd = msg["passwd"]
                     if self.group.is_member(name) != True:
-                        # move socket from new clients list to logged clients
-                        self.new_clients.remove(sock)
-                        # add into the name to sock mapping
-                        self.logged_name2sock[name] = sock
-                        self.logged_sock2name[sock] = name
-                        # load chat history of that user
-                        if name not in self.indices.keys():
-                            try:
-                                self.indices[name] = pkl.load(
-                                    open(name+'.idx', 'rb'))
-                            except IOError:  # chat index does not exist, then create one
-                                self.indices[name] = indexer.Index(name)
-                        print(name + ' logged in')
-                        self.group.join(name)
-                        mysend(sock, json.dumps(
-                            {"action": "login", "status": "ok"}))
+                        key = sqlutils.get_password(name)
+                        if name in sqlutils.get_users():
+                            if key == passwd:
+                                # move socket from new clients list to logged clients
+                                self.new_clients.remove(sock)
+                                # add into the name to sock mapping
+                                self.logged_name2sock[name] = sock
+                                self.logged_sock2name[sock] = name
+                                # load chat history of that user
+                                if name not in self.indices.keys():
+                                    try:
+                                        self.indices[name] = pkl.load(
+                                            open(name+'.idx', 'rb'))
+                                    except IOError:  # chat index does not exist, then create one
+                                        self.indices[name] = indexer.Index(name)
+                                print(name + ' logged in')
+                                self.group.join(name)
+                                mysend(sock, json.dumps(
+                                    {"action": "login", "status": "ok"}))
+                            else: # wrong password
+                                mysend(sock, json.dumps(
+                                    {"action": "login", "status": "wrong password","message":"Wrong password!" }))
+                                print(name + ' wrong password')
+                        else:  # no such user
+                            print('no users')
+                            mysend(sock, json.dumps(
+                                {"action": "login", "status": "no such user","message":"No such user!"}))
                     else:  # a client under this name has already logged in
                         mysend(sock, json.dumps(
-                            {"action": "login", "status": "duplicate"}))
+                            {"action": "login", "status": "duplicate","message": "Duplicate login!"}))
                         print(name + ' duplicate login attempt')
+                elif msg["action"] == "signin":
+                    name = msg['name']
+                    passwd = msg['passwd']
+                    if sqlutils.create_user(name, passwd):
+                        mysend(sock, json.dumps(
+                            {"action": "signin", "status": "ok"}))
+                        print(name + ' signed in')
+                    else:
+                        mysend(sock, json.dumps(
+                            {"action": "signin", "status": "duplicate"}))
+                        print(name + ' duplicate signin attempt')
                 else:
                     print('wrong code received')
             else:  # client died unexpectedly
