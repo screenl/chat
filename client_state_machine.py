@@ -56,7 +56,7 @@ class ClientSM:
         if self.flag == 1:
             if my_msg == 'y':
                 mysend(self.s, json.dumps({"action":"game_accept", "target":self.game_peer}))
-            if my_msg == 'n':
+            else:
                 mysend(self.s, json.dumps({"action":"game_reject", "target":self.game_peer}))
             self.flag=0
             return ''
@@ -93,7 +93,7 @@ class ClientSM:
             elif pm["action"] == "game_reject":
                 self.out_msg += '{} rejects your request\n'.format(pm["from"])
             elif pm["action"] == "game_invite":
-                self.out_msg += "{} invite you to play game, do you want to join?(Y/n)\n".format(pm["from"])
+                self.out_msg += "{} invite you to play game, do you want to join?(y/N)\n".format(pm["from"])
                 self.game_peer = pm["from"]
                 self.flag = 1
             elif pm["action"] == "game_win":

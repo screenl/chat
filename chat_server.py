@@ -100,7 +100,7 @@ class Server:
                         print(name + ' signed in')
                     else:
                         mysend(sock, json.dumps(
-                            {"action": "signin", "status": "duplicate"}))
+                            {"action": "signin", "status": "duplicate", "message" : "Duplicate signin!"}))
                         print(name + ' duplicate signin attempt')
                 else:
                     print('wrong code received')
