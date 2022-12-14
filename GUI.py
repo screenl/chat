@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Fri Apr 30 13:36:58 2021
-alright then
+
 @author: bing
 """
 
@@ -14,6 +14,8 @@ from tkinter import font
 from tkinter import ttk
 from chat_utils import *
 import json
+import os
+from tkinter import messagebox
 
 # GUI class for the chat
 
@@ -30,33 +32,41 @@ class GUI:
         self.socket = s
         self.my_msg = ""
         self.system_msg = ""
+        self.player = 0
 
     def login(self):
         # login window
         self.login = Toplevel()
         # set the title
-        self.login.title("Login")
+        self.login.title("Gobang game")
         self.login.resizable(width=False,
                              height=False)
-        self.login.configure(width=400,
-                             height=300)
+        self.login.configure(width=500,
+                             height=400)
         # create a Label
         self.pls = Label(self.login,
-                         text="Please login to continue",
+                         text="Gobang game",
                          justify=CENTER,
                          font="Helvetica 14 bold")
 
         self.pls.place(relheight=0.15,
-                       relx=0.2,
+                       relx=0.4,
                        rely=0.07)
         # create a Label
         self.labelName = Label(self.login,
-                               text="Name: ",
+                               text="Username: ",
                                font="Helvetica 12")
 
         self.labelName.place(relheight=0.2,
                              relx=0.1,
                              rely=0.2)
+        self.labelName02 = Label(self.login,
+                               text="Password: ",
+                               font="Helvetica 12")
+
+        self.labelName02.place(relheight=0.2,
+                             relx=0.1,
+                             rely=0.4)
 
         # create a entry box for
         # tyoing the message
@@ -67,19 +77,25 @@ class GUI:
                              relheight=0.12,
                              relx=0.35,
                              rely=0.2)
+        self.entryName02 = Entry(self.login,
+                               font="Helvetica 14")
+        self.entryName02.place(relwidth=0.4,
+                             relheight=0.12,
+                             relx=0.35,
+                             rely=0.4)
 
         # set the focus of the curser
         self.entryName.focus()
-
+        
         # create a Continue Button
         # along with action
-        self.go = Button(self.login,
-                         text="CONTINUE",
+        self.log = Button(self.login,
+                         text="Login",
                          font="Helvetica 14 bold",
                          command=lambda: self.goAhead(self.entryName.get()))
 
-        self.go.place(relx=0.4,
-                      rely=0.55)
+        self.log.place(relx=0.4,
+                      rely=0.75)
         self.Window.mainloop()
 
     def goAhead(self, name):
@@ -113,7 +129,7 @@ class GUI:
         self.Window.title("CHATROOM")
         self.Window.resizable(width=False,
                               height=False)
-        self.Window.configure(width=470,
+        self.Window.configure(width=600,
                               height=550,
                               bg="#17202A")
         self.labelHead = Label(self.Window,
@@ -177,9 +193,21 @@ class GUI:
         self.buttonMsg.place(relx=0.77,
                              rely=0.008,
                              relheight=0.06,
-                             relwidth=0.22)
+                             relwidth=0.10)
+        self.buttonPlay = Button(self.labelBottom,
+                                text="Play\n game",
+                                font="Helvetica 10 bold",
+                                width=20,
+                                bg="#ABB2B9",
+                                command = self.opengame())
+
+        self.buttonPlay.place(relx=0.88,
+                             rely=0.008,
+                             relheight=0.06,
+                             relwidth=0.10)
 
         self.textCons.config(cursor="arrow")
+        
 
         # create a scroll bar
         scrollbar = Scrollbar(self.textCons)
@@ -221,6 +249,18 @@ class GUI:
                 self.textCons.insert(END, self.system_msg + "\n\n")
                 self.textCons.config(state=DISABLED)
                 self.textCons.see(END)
+    
+    def opengame(self):
+        if self.player == 0:
+            self.player += 1
+            os.system('python chess_server.py')
+        elif self.player == 1:
+            self.player += 1
+            os.system('python chess_client.py')
+        elif self.player >= 2:
+            self.messagebox.showinfo(title= 'report',info = 'players are enough')
+            
+            
 
     def run(self):
         self.login()
