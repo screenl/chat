@@ -21,6 +21,7 @@ import sqlutils
 
 class Server:
     def __init__(self):
+        sqlutils.sql_init()
         self.new_clients = []  # list of new sockets of which the user id is not known
         self.logged_name2sock = {}  # dictionary mapping username to socket
         self.logged_sock2name = {}  # dict mapping socket to user name

@@ -31,7 +31,7 @@ import re
 import time
 import os
 from tkinter import messagebox
-
+import chess_server,chess_client
 # GUI class for the chat
 
 
@@ -77,13 +77,6 @@ class GUI:
         self.labelName.place(relheight=0.2,
                              relx=0.1,
                              rely=0.2)
-        self.labelName02 = Label(self.login,
-                               text="Password: ",
-                               font="Helvetica 12")
-
-        self.labelName02.place(relheight=0.2,
-                             relx=0.1,
-                             rely=0.4)
 
         # create a entry box for
         # tyoing the message
@@ -94,12 +87,6 @@ class GUI:
                              relheight=0.12,
                              relx=0.35,
                              rely=0.2)
-        self.entryName02 = Entry(self.login,
-                               font="Helvetica 14")
-        self.entryName02.place(relwidth=0.4,
-                             relheight=0.12,
-                             relx=0.35,
-                             rely=0.4)
 
         self.labelPasswd = Label(self.login,
                                text="Password: ",
@@ -127,11 +114,33 @@ class GUI:
                          text="Login",
                          font="Helvetica 14 bold",
                          command=lambda: self.goAhead(self.entryName.get(),self.entryPasswd.get()))
+        self.signin = Button(self.login,
+                         text="Sign in",
+                         font="Helvetica 14 bold",
+                         command=lambda: self.signIn(self.entryName.get(),self.entryPasswd.get()))
 
         self.log.place(relx=0.4,
                       rely=0.75)
+        self.signin.place(relx=0.6,
+                        rely=0.75)
         self.Window.mainloop()
 
+    def signIn(self,username,passwd):
+        #check if the username contains illegal characters
+        if re.match(r'^[a-zA-Z0-9_]+$', username) is None:
+            messagebox.showerror('Error', 'Username contains illegal characters (can only use alphabets, numbers and underscore)')
+            return
+        else:
+            msg = json.dumps({"action": "signin", "name": username, "passwd": passwd})
+            self.send(msg)
+            response = json.loads(self.recv())
+            if response["status"] == 'ok':
+                messagebox.showinfo('Success', 'Sign in successfully')
+            else:
+                messagebox.showerror('Error', response["message"])
+
+
+        
     def goAhead(self, name,passwd):
         if len(name) > 0:
             msg = json.dumps({"action": "login", "name": name, "passwd": passwd})
@@ -221,16 +230,12 @@ class GUI:
 
         self.entryMsg.focus()
 
-        # create a Send Button
-        def plus():
-            self.entryMsg.insert(END, "+")
-
         self.buttonPlus = Button(self.labelBottom,
-                                text="+",
+                                text="Game",
                                 font="Helvetica 20 bold",
                                 width=20,
                                 bg="#ABB2B9",
-                                command=lambda: plus())
+                                command=lambda: self.opengame())
         self.buttonPlus.place(relx=0.52,rely=0.008,relheight=0.029,relwidth=0.22)
 
 
@@ -341,10 +346,10 @@ class GUI:
     def opengame(self):
         if self.player == 0:
             self.player += 1
-            os.system('python chess_server.py')
+            chess_server.run()
         elif self.player == 1:
             self.player += 1
-            os.system('python chess_client.py')
+            chess_client.run()
         elif self.player >= 2:
             self.messagebox.showinfo(title= 'report',info = 'players are enough')
             
