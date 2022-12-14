@@ -17,16 +17,19 @@ import pickle as pkl
 from chat_utils import *
 import chat_group as grp
 import sqlutils
+import chessboard
 
 
 class Server:
     def __init__(self):
+        sqlutils.sql_init()
         self.new_clients = []  # list of new sockets of which the user id is not known
         self.logged_name2sock = {}  # dictionary mapping username to socket
         self.logged_sock2name = {}  # dict mapping socket to user name
         self.all_sockets = []
         self.group = grp.Group()
         # start server
+        self.boards = {}
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.bind(SERVER)
         self.server.listen(5)
@@ -189,6 +192,106 @@ class Server:
                 ctime = time.strftime('%d.%m.%y,%H:%M', time.localtime())
                 mysend(from_sock, json.dumps(
                     {"action": "time", "results": ctime}))
+# ==============================================================================
+#                 deal with game
+# ==============================================================================
+            elif msg["action"] == "game_start":
+                from_name = self.logged_sock2name[from_sock]
+                to_name = msg["target"]
+                print('game start from ' + from_name + ' to ' + to_name)
+                if to_name not in self.group.list_all():
+                    mysend(from_sock, json.dumps(
+                        {"action": "game_error", "status": "no-user"}))
+                elif to_name in self.boards.keys():
+                    mysend(from_sock, json.dumps(
+                        {"action": "game_error", "status": "busy"}))
+                else:
+                    to_sock = self.logged_name2sock[to_name]
+                    mysend(to_sock, json.dumps(
+                        {"action": "game_invite", "from": from_name}))
+
+            elif msg["action"] == "game_accept":
+                from_name = self.logged_sock2name[from_sock]
+                to_name = msg["target"]
+                print('game accept from ' + from_name + ' to ' + to_name)
+                if to_name not in self.group.list_all():
+                    mysend(from_sock, json.dumps(
+                        {"action": "game_error", "status": "no-user"}))
+                elif to_name in self.boards.keys():
+                    mysend(from_sock, json.dumps(
+                        {"action": "game_error", "status": "busy"}))
+                else:
+                    self.boards[to_name] = self.boards[from_name] = chessboard.Board()
+                    self.boards[to_name].last = self.boards[to_name]
+                    to_sock = self.logged_name2sock[to_name]
+                    mysend(to_sock, json.dumps(
+                        {"action": "game_start", "from": from_name}))
+                    mysend(from_sock, json.dumps(
+                        {"action": "game_start", "from": to_name}))
+
+            elif msg["action"] == "game_reject":
+                from_name = self.logged_sock2name[from_sock]
+                to_name = msg["target"]
+                print('game reject from ' + from_name + ' to ' + to_name)
+                if to_name not in self.group.list_all():
+                    mysend(from_sock, json.dumps(
+                        {"action": "game_error", "status": "no-user"}))
+                else:
+                    to_sock = self.logged_name2sock[to_name]
+                    mysend(to_sock, json.dumps(
+                        {"action": "game_reject", "from": from_name}))
+            
+            elif msg["action"] == "game_move":
+                from_name = self.logged_sock2name[from_sock]
+                to_name = msg["target"]
+                to_sock = self.logged_name2sock[to_name]
+                print('game move from ' + from_name + ' to ' + to_name)
+                if to_name not in self.group.list_all():
+                    mysend(from_sock, json.dumps(
+                        {"action": "game_error", "status": "no-user"}))
+                elif to_name not in self.boards.keys():
+                    mysend(from_sock, json.dumps(
+                        {"action": "game_error", "status": "unknown error"}))
+                else:
+                    try:
+                        if from_name == self.boards[from_name].last:
+                            mysend(from_sock, json.dumps(
+                                {"action": "game_error", "status": "not your turn"}))
+                        else:
+                            self.boards[from_name].place(int(msg["x"]),int(msg["y"]),from_name)
+                            self.boards[from_name].last = from_name
+                            mysend(to_sock, json.dumps(
+                                {"action": "game_move", "from": from_name, "x": msg["x"], "y": msg["y"]}))
+                            mysend(from_sock, json.dumps(
+                                {"action": "game_move", "from": from_name, "x": msg["x"], "y": msg["y"]}))
+                            w = self.boards[from_name].check() 
+                            if w != -1:
+                                mysend(to_sock, json.dumps(
+                                    {"action": "game_win", "from": w}))
+                                mysend(from_sock, json.dumps(
+                                    {"action": "game_win", "from": w}))
+                                del self.boards[from_name],self.boards[to_name]
+                    except:
+                        mysend(from_sock, json.dumps(
+                            {"action": "game_error", "status": "illegal move"}))
+
+            elif msg["action"] == "game_quit":
+                from_name = self.logged_sock2name[from_sock]
+                to_name = msg["target"]
+                to_sock = self.logged_name2sock[to_name]
+                print('game move from ' + from_name + ' to ' + to_name)
+                if to_name not in self.group.list_all():
+                    mysend(from_sock, json.dumps(
+                        {"action": "game_error", "status": "no-user"}))
+                elif to_name not in self.boards.keys():
+                    mysend(from_sock, json.dumps(
+                        {"action": "game_error", "status": "unknown error"}))
+                else:
+                    mysend(from_sock, json.dumps(
+                        {"action": "game_quit", "from": from_name}))
+                    mysend(to_sock, json.dumps(
+                        {"action": "game_quit", "from": from_name}))
+                    del self.boards[from_name],self.boards[to_name]
 # ==============================================================================
 #                 search
 # ==============================================================================

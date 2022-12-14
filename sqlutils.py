@@ -4,6 +4,13 @@ import sqlite3
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 db_path = os.path.join(BASE_DIR, "users.db")
 
+def sql_init():
+    with sqlite3.connect(db_path) as conn:
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS users
+                     (username text, password text)''')
+        conn.commit()
+
 def create_user(username,passwd):
     p = 1
     with sqlite3.connect(db_path) as conn:
@@ -29,7 +36,7 @@ def get_users():
     with sqlite3.connect(db_path) as conn:
         c = conn.cursor()
         t = c.execute(f"SELECT username FROM users").fetchall()
-        return t[0]
+        return [i[0] for i in t]
 
 if __name__=='__main__':
     print(get_password('admin'))
