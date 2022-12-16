@@ -224,7 +224,7 @@ class Server:
                         {"action": "game_error", "status": "busy"}))
                 else:
                     self.boards[to_name] = self.boards[from_name] = chessboard.Board()
-                    self.boards[to_name].last = self.boards[to_name]
+                    self.boards[to_name].last = from_name
                     to_sock = self.logged_name2sock[to_name]
                     mysend(to_sock, json.dumps(
                         {"action": "game_start", "from": from_name}))

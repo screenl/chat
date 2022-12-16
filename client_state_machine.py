@@ -6,6 +6,7 @@ Created on Sun Apr  5 00:00:32 2015
 from chat_utils import *
 import json
 
+
 class ClientSM:
     def __init__(self, s):
         self.state = S_OFFLINE
@@ -14,6 +15,8 @@ class ClientSM:
         self.out_msg = ''
         self.s = s
         self.flag = 0
+        self.initiating = 0
+        self.colors = ['black','white']
         self.chessboard = [[-1 for i in range(10)] for j in range(10)]
         self.game_peer = ''
 
@@ -53,20 +56,19 @@ class ClientSM:
 
     def proc(self, my_msg, peer_msg):
         self.out_msg = ''
+
+#deal with invitations
         if self.flag == 1:
             if my_msg == 'y':
                 mysend(self.s, json.dumps({"action":"game_accept", "target":self.game_peer}))
+                self.initiating = 1
             else:
                 mysend(self.s, json.dumps({"action":"game_reject", "target":self.game_peer}))
             self.flag=0
             return ''
-#==============================================================================
-# Once logged in, do a few things: get peer listing, connect, search
-# And, of course, if you are so bored, just go
-# This is event handling instate "S_LOGGEDIN"
-#==============================================================================
-
+            
 #deal with game stuff
+
         if my_msg[:5] == '/game':
             operators = my_msg.split()
             try:
@@ -88,7 +90,7 @@ class ClientSM:
         if len(peer_msg) > 0:
             pm = json.loads(peer_msg)
             if pm["action"] == "game_start":
-                self.out_msg += "starting game with {}, you are BLACK!".format(pm["from"])
+                self.out_msg += "starting game with {}, you are {}!".format(pm["from"],self.colors[self.initiating])
                 self.game_peer = pm["from"]
             elif pm["action"] == "game_reject":
                 self.out_msg += '{} rejects your request\n'.format(pm["from"])
@@ -112,7 +114,11 @@ class ClientSM:
                 self.game_peer = ''
                 self.out_msg += 'game ended, {} quits!\n'.format(pm["from"])
                 self.chessboard = [[-1 for i in range(10)] for j in range(10)]
-
+#==============================================================================
+# Once logged in, do a few things: get peer listing, connect, search
+# And, of course, if you are so bored, just go
+# This is event handling instate "S_LOGGEDIN"
+#==============================================================================
         if self.state == S_LOGGEDIN:
             # todo: can't deal with multiple lines yet
             if len(my_msg) > 0:

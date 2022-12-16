@@ -384,8 +384,8 @@ class GUI:
     def chessboardInit(self):
         self.myCanvas.delete("all")
         for i in range(10):
-            self.myCanvas.create_line(25, 25 + i * 44.444, 425, 25 + i * 44.444,fill="black",width=2)
-            self.myCanvas.create_line(25 + i * 44.444, 25, 25 + i * 44.444, 425,fill="black",width=2)
+            self.myCanvas.create_line(25, 25 + i * 44.444, 425, 25 + i * 44.444,fill= 'black',width=2)
+            self.myCanvas.create_line(25 + i * 44.444, 25, 25 + i * 44.444, 425,fill= 'black',width=2)
         
     def addChess(self,x,y,color):
         self.myCanvas.create_oval(25+x*44.444-15,25+y*44.444-15,25+x*44.444+15,25+y*44.444+15,fill=color,outline=color)         
@@ -397,9 +397,9 @@ class GUI:
         for i in range(10):
             for j in range(10):
                 if self.sm.chessboard[i][j] == 0:
-                    self.addChess(i,j,"black")
+                    self.addChess(i,j, self.sm.colors[self.sm.initiating])
                 elif self.sm.chessboard[i][j] == 1:
-                    self.addChess(i,j,"white")
+                    self.addChess(i,j, self.sm.colors[1-self.sm.initiating])
 
     def run(self):
         self.login()
