@@ -252,6 +252,7 @@ class GUI:
 
         def help():
             helpWindow = Toplevel(self.Window)
+            helpWindow.config(height=350,width=600)
             helpWindow.title("Help")
             helpText = Text(helpWindow, width=20, height=2, bg="#17202A", fg="#EAECEE", font="Helvetica 14", padx=5, pady=5)
             helpText.place(relheight=1,relwidth=1)

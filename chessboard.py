@@ -3,6 +3,7 @@ class Board:
     def __init__(self) -> None:
         self.board=[[0 for i in range(10)] for j in range(10)]
         self.last = ''
+        
     def place(self,x,y,player):
         if self.board[x][y] == 0:
             self.board[x][y]=player
