@@ -12,12 +12,20 @@ Created on Fri Apr 30 13:36:58 2021
 + help - explains
 '''
 helpTextString = r'''
+- Special Inputs:
 \t for time (e.g. 13:36:58)
 \d for date (e.g. Apr 30 2021)
 \* for the character *
 **text** for bold
 *text* for italic
+
+- Gobang game:
+Press "Game" to view the chest board
+/game start <username>: invite a user to play Gobang game
+/game move <x> <y>: place a chess on the board (You can also do this by clicking the board)
+/game quit: quit the game
 '''
+
 # import all the required  modules
 import threading
 import select
@@ -31,8 +39,9 @@ import re
 import time
 import os
 from tkinter import messagebox
-import chess_server,chess_client
+import chessboard
 # GUI class for the chat
+
 
 
 class GUI:
@@ -48,6 +57,8 @@ class GUI:
         self.my_msg = ""
         self.system_msg = ""
         self.player = 0
+        self.chestboard = chessboard.Board()
+        self.boardWindow = None
 
 
 
@@ -235,12 +246,13 @@ class GUI:
                                 font="Helvetica 20 bold",
                                 width=20,
                                 bg="#ABB2B9",
-                                command=lambda: self.opengame())
+                                command=lambda: self.openGame())
         self.buttonPlus.place(relx=0.52,rely=0.008,relheight=0.029,relwidth=0.22)
 
 
         def help():
             helpWindow = Toplevel(self.Window)
+            helpWindow.config(height=350,width=600)
             helpWindow.title("Help")
             helpText = Text(helpWindow, width=20, height=2, bg="#17202A", fg="#EAECEE", font="Helvetica 14", padx=5, pady=5)
             helpText.place(relheight=1,relwidth=1)
@@ -285,6 +297,7 @@ class GUI:
 
     # function to basically start the thread for sending messages
     def parseOutput(self, msg):
+        
         msg = re.sub(r'\\t',time.strftime("%H:%M:%S", time.localtime()), msg)
         msg = re.sub(r'\\d',time.strftime("%b %d %Y", time.localtime()), msg)
         #mark time and date
@@ -339,21 +352,55 @@ class GUI:
                 self.my_msg = ""
                 self.textCons.config(state=NORMAL)
                 #self.textCons.insert(END, self.system_msg + "\n\n")
+                if self.boardWindow:
+                    self.updateChessboard()
+                if 'game ended' in self.system_msg:
+                    if self.boardWindow:
+                        self.closeGame()
                 self.parseOutput(self.system_msg+'\n')
                 self.textCons.config(state=DISABLED)
                 self.textCons.see(END)
+
+    def closeGame(self):
+        self.boardWindow.destroy()
+        self.boardWindow = None
+
+    def openGame(self):
+        if not self.sm.game_peer:
+            messagebox.showerror("Error", "Not in a game right now")
+        elif not self.boardWindow:
+            self.boardWindow = Toplevel(self.Window)
+            self.boardWindow.protocol("WM_DELETE_WINDOW",self.closeGame)
+            self.myCanvas = Canvas(self.boardWindow, bg="#b97a57", height=450, width=450)
+            self.chessboardInit()
+            self.updateChessboard()
+            def on_click(event):
+                p = lambda t: int((t-25+22.222)//44.444)
+                x,y = p(event.x),p(event.y)
+                self.entryMsg.delete(0, END)
+                self.entryMsg.insert(END, "/game move "+str(x)+" "+str(y))
+            self.myCanvas.bind("<Button-1>", on_click)
+            self.myCanvas.pack()
+
+    def chessboardInit(self):
+        self.myCanvas.delete("all")
+        for i in range(10):
+            self.myCanvas.create_line(25, 25 + i * 44.444, 425, 25 + i * 44.444,fill= 'black',width=2)
+            self.myCanvas.create_line(25 + i * 44.444, 25, 25 + i * 44.444, 425,fill= 'black',width=2)
+        
+    def addChess(self,x,y,color):
+        self.myCanvas.create_oval(25+x*44.444-15,25+y*44.444-15,25+x*44.444+15,25+y*44.444+15,fill=color,outline=color)         
     
-    def opengame(self):
-        if self.player == 0:
-            self.player += 1
-            chess_server.run()
-        elif self.player == 1:
-            self.player += 1
-            chess_client.run()
-        elif self.player >= 2:
-            self.messagebox.showinfo(title= 'report',info = 'players are enough')
-            
-            
+    def updateChessboard(self):
+        if self.sm.game_peer:
+            self.boardWindow.title("Game with "+self.sm.game_peer)
+        self.chessboardInit()
+        for i in range(10):
+            for j in range(10):
+                if self.sm.chessboard[i][j] == 0:
+                    self.addChess(i,j, self.sm.colors[self.sm.initiating])
+                elif self.sm.chessboard[i][j] == 1:
+                    self.addChess(i,j, self.sm.colors[1-self.sm.initiating])
 
     def run(self):
         self.login()

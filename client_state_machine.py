@@ -6,6 +6,7 @@ Created on Sun Apr  5 00:00:32 2015
 from chat_utils import *
 import json
 
+
 class ClientSM:
     def __init__(self, s):
         self.state = S_OFFLINE
@@ -13,6 +14,11 @@ class ClientSM:
         self.me = ''
         self.out_msg = ''
         self.s = s
+        self.flag = 0
+        self.initiating = 0
+        self.colors = ['black','white']
+        self.chessboard = [[-1 for i in range(10)] for j in range(10)]
+        self.game_peer = ''
 
     def set_state(self, state):
         self.state = state
@@ -50,6 +56,64 @@ class ClientSM:
 
     def proc(self, my_msg, peer_msg):
         self.out_msg = ''
+
+#deal with invitations
+        if self.flag == 1:
+            if my_msg == 'y':
+                mysend(self.s, json.dumps({"action":"game_accept", "target":self.game_peer}))
+                self.initiating = 1
+            else:
+                mysend(self.s, json.dumps({"action":"game_reject", "target":self.game_peer}))
+            self.flag=0
+            return ''
+            
+#deal with game stuff
+
+        if my_msg[:5] == '/game':
+            operators = my_msg.split()
+            try:
+                if operators[1] == 'start':
+                    if operators[2] == self.me:
+                        raise Exception
+                    else:
+                        mysend(self.s, json.dumps({"action":"game_start", "target":operators[2]}))
+                elif operators[1] == 'move':
+                    mysend(self.s, json.dumps({"action":"game_move", "x":operators[2], "y":operators[3],"target":self.game_peer}))
+                elif operators[1] == 'quit':
+                    mysend(self.s, json.dumps({"action":"game_quit", "target":self.game_peer}))
+                else:
+                    self.out_msg += "Invalid command\n"
+            except:
+                self.out_msg += 'Invalid command\n'
+            return self.out_msg
+
+        if len(peer_msg) > 0:
+            pm = json.loads(peer_msg)
+            if pm["action"] == "game_start":
+                self.out_msg += "starting game with {}, you are {}!".format(pm["from"],self.colors[self.initiating])
+                self.game_peer = pm["from"]
+            elif pm["action"] == "game_reject":
+                self.out_msg += '{} rejects your request\n'.format(pm["from"])
+            elif pm["action"] == "game_invite":
+                self.out_msg += "{} invite you to play game, do you want to join?(y/N)\n".format(pm["from"])
+                self.game_peer = pm["from"]
+                self.flag = 1
+            elif pm["action"] == "game_win":
+                self.game_peer == ''
+                self.out_msg += 'game ended, {} wins!\n'.format(pm["from"])
+                self.chessboard = [[-1 for i in range(10)] for j in range(10)]
+            elif pm["action"] == "game_move":
+                if pm["from"] == self.game_peer:
+                    self.chessboard[int(pm["x"])][int(pm["y"])] = 1
+                else:
+                    self.chessboard[int(pm["x"])][int(pm["y"])] = 0
+                self.out_msg += '{} placed on ({},{})'.format(pm["from"], pm["x"], pm["y"])
+            elif pm["action"] == "game_error":
+                self.out_msg += 'game error: ' + pm["status"]+'\n'
+            elif pm["action"] == "game_quit":
+                self.game_peer = ''
+                self.out_msg += 'game ended, {} quits!\n'.format(pm["from"])
+                self.chessboard = [[-1 for i in range(10)] for j in range(10)]
 #==============================================================================
 # Once logged in, do a few things: get peer listing, connect, search
 # And, of course, if you are so bored, just go
@@ -129,7 +193,9 @@ class ClientSM:
                     self.peer = ''
             if len(peer_msg) > 0:    # peer's stuff, coming in
                 peer_msg = json.loads(peer_msg)
-                if peer_msg["action"] == "connect":
+                if 'game' in peer_msg["action"]:
+                    pass
+                elif peer_msg["action"] == "connect":
                     self.out_msg += "(" + peer_msg["from"] + " joined)\n"
                 elif peer_msg["action"] == "disconnect":
                     self.state = S_LOGGEDIN
